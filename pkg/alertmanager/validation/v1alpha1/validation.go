@@ -43,6 +43,15 @@ func ValidateAlertmanagerConfig(amc *monitoringv1alpha1.AlertmanagerConfig) erro
 		return err
 	}
 
+	timeIntervals, err := validateTimeIntervals(amc.Spec.TimeIntervals)
+	if err != nil {
+		return err
+	}
+	// should check for Alertmanager version here?
+	for k, v := range timeIntervals {
+		muteTimeIntervals[k] = v
+	}
+
 	return validateAlertManagerRoutes(amc.Spec.Route, receivers, muteTimeIntervals, true)
 }
 
@@ -303,7 +312,7 @@ func validateTelegramConfigs(configs []monitoringv1alpha1.TelegramConfig) error 
 // validateAlertManagerRoutes verifies that the given route and all its children are semantically valid.
 // because of the self-referential issues mentioned in https://github.com/kubernetes/kubernetes/issues/62872
 // it is not currently possible to apply OpenAPI validation to a v1alpha1.Route
-func validateAlertManagerRoutes(r *monitoringv1alpha1.Route, receivers, muteTimeIntervals map[string]struct{}, topLevelRoute bool) error {
+func validateAlertManagerRoutes(r *monitoringv1alpha1.Route, receivers, timeIntervals map[string]struct{}, topLevelRoute bool) error {
 	if r == nil {
 		return nil
 	}
@@ -332,8 +341,14 @@ func validateAlertManagerRoutes(r *monitoringv1alpha1.Route, receivers, muteTime
 	}
 
 	for _, namedMuteTimeInterval := range r.MuteTimeIntervals {
-		if _, found := muteTimeIntervals[namedMuteTimeInterval]; !found {
+		if _, found := timeIntervals[namedMuteTimeInterval]; !found {
 			return errors.Errorf("mute time interval %q not found", namedMuteTimeInterval)
+		}
+	}
+
+	for _, namedActiveTimeInterval := range r.ActiveTimeIntervals {
+		if _, found := timeIntervals[namedActiveTimeInterval]; !found {
+			return errors.Errorf("active time interval %q not found", namedActiveTimeInterval)
 		}
 	}
 
@@ -356,7 +371,7 @@ func validateAlertManagerRoutes(r *monitoringv1alpha1.Route, receivers, muteTime
 	}
 
 	for i := range children {
-		if err := validateAlertManagerRoutes(&children[i], receivers, muteTimeIntervals, false); err != nil {
+		if err := validateAlertManagerRoutes(&children[i], receivers, timeIntervals, false); err != nil {
 			return errors.Wrapf(err, "route[%d]", i)
 		}
 	}
@@ -374,4 +389,16 @@ func validateMuteTimeIntervals(muteTimeIntervals []monitoringv1alpha1.MuteTimeIn
 		muteTimeIntervalNames[mti.Name] = struct{}{}
 	}
 	return muteTimeIntervalNames, nil
+}
+
+func validateTimeIntervals(timeIntervals []monitoringv1alpha1.TimeIntervals) (map[string]struct{}, error) {
+	timeIntervalNames := make(map[string]struct{}, len(timeIntervals))
+
+	for i, ti := range timeIntervals {
+		if err := ti.Validate(); err != nil {
+			return nil, errors.Wrapf(err, "mute time interval[%d] is invalid", i)
+		}
+		timeIntervalNames[ti.Name] = struct{}{}
+	}
+	return timeIntervalNames, nil
 }

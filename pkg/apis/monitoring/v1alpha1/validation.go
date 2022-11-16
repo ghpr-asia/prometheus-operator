@@ -100,6 +100,42 @@ func (mti MuteTimeInterval) Validate() error {
 	return nil
 }
 
+// Validate the TimeInterval
+func (ti TimeIntervals) Validate() error {
+	if ti.Name == "" {
+		return errors.New("empty name field for time interval")
+	}
+
+	for i, ti := range ti.TimeIntervals {
+		for _, time := range ti.Times {
+			if err := time.Validate(); err != nil {
+				return fmt.Errorf("time range at %d is invalid: %w", i, err)
+			}
+		}
+		for _, weekday := range ti.Weekdays {
+			if err := weekday.Validate(); err != nil {
+				return fmt.Errorf("weekday range at %d is invalid: %w", i, err)
+			}
+		}
+		for _, dom := range ti.DaysOfMonth {
+			if err := dom.Validate(); err != nil {
+				return fmt.Errorf("mute time interval is invalid - day of month range at %d is invalid: %w", i, err)
+			}
+		}
+		for _, month := range ti.Months {
+			if err := month.Validate(); err != nil {
+				return fmt.Errorf("month range at %d is invalid: %w", i, err)
+			}
+		}
+		for _, year := range ti.Years {
+			if err := year.Validate(); err != nil {
+				return fmt.Errorf("year range at %d is invalid: %w", i, err)
+			}
+		}
+	}
+	return nil
+}
+
 // Validate the TimeRange
 func (tr TimeRange) Validate() error {
 	_, err := tr.Parse()
@@ -306,8 +342,10 @@ type ParsedRange struct {
 	End int `json:"end,omitempty"`
 }
 
-var validTime = "^((([01][0-9])|(2[0-3])):[0-5][0-9])$|(^24:00$)"
-var validTimeRE = regexp.MustCompile(validTime)
+var (
+	validTime   = "^((([01][0-9])|(2[0-3])):[0-5][0-9])$|(^24:00$)"
+	validTimeRE = regexp.MustCompile(validTime)
+)
 
 // Converts a string of the form "HH:MM" into the number of minutes elapsed in the day.
 func parseTime(in string) (mins int, err error) {

@@ -78,8 +78,12 @@ type AlertmanagerConfigSpec struct {
 	// +optional
 	InhibitRules []InhibitRule `json:"inhibitRules,omitempty"`
 	// List of MuteTimeInterval specifying when the routes should be muted.
+	// +kubebuilder:deprecatedversion
 	// +optional
 	MuteTimeIntervals []MuteTimeInterval `json:"muteTimeIntervals,omitempty"`
+	// List of TimeInterval specifying when the routes should be muted or active.
+	// +optional
+	TimeIntervals []TimeIntervals `json:"timeIntervals,omitempty"`
 }
 
 // Route defines a node in the routing tree.
@@ -131,6 +135,9 @@ type Route struct {
 	// MuteTimeIntervals is a list of MuteTimeInterval names that will mute this route when matched,
 	// +optional
 	MuteTimeIntervals []string `json:"muteTimeIntervals,omitempty"`
+	// ActiveTimeIntervals is a list of TimeInterval names when this route should be active,
+	// +optional
+	ActiveTimeIntervals []string `json:"activeTimeIntervals,omitempty"`
 }
 
 // ChildRoutes extracts the child routes.
@@ -928,6 +935,15 @@ func openMetricsEscape(s string) string {
 
 // MuteTimeInterval specifies the periods in time when notifications will be muted
 type MuteTimeInterval struct {
+	// Name of the time interval
+	// +kubebuilder:validation:Required
+	Name string `json:"name,omitempty"`
+	// TimeIntervals is a list of TimeInterval
+	TimeIntervals []TimeInterval `json:"timeIntervals,omitempty"`
+}
+
+// TimeIntervals specifies the periods in time when notifications will be muted or active
+type TimeIntervals struct {
 	// Name of the time interval
 	// +kubebuilder:validation:Required
 	Name string `json:"name,omitempty"`

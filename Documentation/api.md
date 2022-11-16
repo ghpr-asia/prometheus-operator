@@ -12588,6 +12588,20 @@ the resource&rsquo;s namespace.</p>
 <p>List of MuteTimeInterval specifying when the routes should be muted.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>timeIntervals</code><br/>
+<em>
+<a href="#monitoring.coreos.com/v1alpha1.TimeIntervals">
+[]TimeIntervals
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>List of TimeInterval specifying when the routes should be muted or active.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -12668,6 +12682,20 @@ the resource&rsquo;s namespace.</p>
 <td>
 <em>(Optional)</em>
 <p>List of MuteTimeInterval specifying when the routes should be muted.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timeIntervals</code><br/>
+<em>
+<a href="#monitoring.coreos.com/v1alpha1.TimeIntervals">
+[]TimeIntervals
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>List of TimeInterval specifying when the routes should be muted or active.</p>
 </td>
 </tr>
 </tbody>
@@ -14430,6 +14458,18 @@ JSON representation.
 MuteTimeIntervals is a list of MuteTimeInterval names that will mute this route when matched,</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>activeTimeIntervals</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ActiveTimeIntervals is a list of TimeInterval names when this route should be active,</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="monitoring.coreos.com/v1alpha1.SNSConfig">SNSConfig
@@ -15202,7 +15242,7 @@ HTTPConfig
 <h3 id="monitoring.coreos.com/v1alpha1.TimeInterval">TimeInterval
 </h3>
 <p>
-(<em>Appears on:</em><a href="#monitoring.coreos.com/v1alpha1.MuteTimeInterval">MuteTimeInterval</a>)
+(<em>Appears on:</em><a href="#monitoring.coreos.com/v1alpha1.MuteTimeInterval">MuteTimeInterval</a>, <a href="#monitoring.coreos.com/v1alpha1.TimeIntervals">TimeIntervals</a>)
 </p>
 <div>
 <p>TimeInterval describes intervals of time</p>
@@ -15283,6 +15323,48 @@ HTTPConfig
 <td>
 <em>(Optional)</em>
 <p>Years is a list of YearRange</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="monitoring.coreos.com/v1alpha1.TimeIntervals">TimeIntervals
+</h3>
+<p>
+(<em>Appears on:</em><a href="#monitoring.coreos.com/v1alpha1.AlertmanagerConfigSpec">AlertmanagerConfigSpec</a>)
+</p>
+<div>
+<p>TimeIntervals specifies the periods in time when notifications will be muted or active</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the time interval</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timeIntervals</code><br/>
+<em>
+<a href="#monitoring.coreos.com/v1alpha1.TimeInterval">
+[]TimeInterval
+</a>
+</em>
+</td>
+<td>
+<p>TimeIntervals is a list of TimeInterval</p>
 </td>
 </tr>
 </tbody>

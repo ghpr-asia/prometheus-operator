@@ -160,6 +160,14 @@ func (cb *configBuilder) initializeFromAlertmanagerConfig(ctx context.Context, g
 		globalAlertmanagerConfig.MuteTimeIntervals = append(globalAlertmanagerConfig.MuteTimeIntervals, mti)
 	}
 
+	for _, timeInterval := range amConfig.Spec.TimeIntervals {
+		ti, err := convertTimeInterval(&timeInterval, crKey)
+		if err != nil {
+			return err
+		}
+		globalAlertmanagerConfig.TimeIntervals = append(globalAlertmanagerConfig.TimeIntervals, ti)
+	}
+
 	if err := globalAlertmanagerConfig.sanitize(cb.amVersion, cb.logger); err != nil {
 		return err
 	}
@@ -244,6 +252,14 @@ func (cb *configBuilder) addAlertmanagerConfigs(ctx context.Context, amConfigs m
 				return errors.Wrapf(err, "AlertmanagerConfig %s", crKey.String())
 			}
 			cb.cfg.MuteTimeIntervals = append(cb.cfg.MuteTimeIntervals, mti)
+		}
+
+		for _, timeIntervals := range amConfigs[amConfigIdentifier].Spec.TimeIntervals {
+			ti, err := convertTimeInterval(&timeIntervals, crKey)
+			if err != nil {
+				return errors.Wrapf(err, "AlertmanagerConfig %s", crKey.String())
+			}
+			cb.cfg.TimeIntervals = append(cb.cfg.TimeIntervals, ti)
 		}
 	}
 
@@ -404,18 +420,26 @@ func (cb *configBuilder) convertRoute(in *monitoringv1alpha1.Route, crKey types.
 		}
 	}
 
+	var prefixedActiveTimeIntervals []string
+	if len(in.ActiveTimeIntervals) > 0 {
+		for _, ati := range in.ActiveTimeIntervals {
+			prefixedActiveTimeIntervals = append(prefixedActiveTimeIntervals, makeNamespacedString(ati, crKey))
+		}
+	}
+
 	return &route{
-		Receiver:          receiver,
-		GroupByStr:        in.GroupBy,
-		GroupWait:         in.GroupWait,
-		GroupInterval:     in.GroupInterval,
-		RepeatInterval:    in.RepeatInterval,
-		Continue:          in.Continue,
-		Match:             match,
-		MatchRE:           matchRE,
-		Matchers:          matchers,
-		Routes:            routes,
-		MuteTimeIntervals: prefixedMuteTimeIntervals,
+		Receiver:            receiver,
+		GroupByStr:          in.GroupBy,
+		GroupWait:           in.GroupWait,
+		GroupInterval:       in.GroupInterval,
+		RepeatInterval:      in.RepeatInterval,
+		Continue:            in.Continue,
+		Match:               match,
+		MatchRE:             matchRE,
+		Matchers:            matchers,
+		Routes:              routes,
+		MuteTimeIntervals:   prefixedMuteTimeIntervals,
+		ActiveTimeIntervals: prefixedActiveTimeIntervals,
 	}
 }
 
@@ -635,7 +659,6 @@ func (cb *configBuilder) convertSlackConfig(ctx context.Context, in monitoringv1
 			}
 
 			if a.ConfirmField != nil {
-
 				action.ConfirmField = &slackConfirmationField{
 					Text:        a.ConfirmField.Text,
 					Title:       a.ConfirmField.Title,
@@ -809,7 +832,6 @@ func (cb *configBuilder) convertOpsgenieConfig(ctx context.Context, in monitorin
 }
 
 func (cb *configBuilder) convertWeChatConfig(ctx context.Context, in monitoringv1alpha1.WeChatConfig, crKey types.NamespacedName) (*weChatConfig, error) {
-
 	out := &weChatConfig{
 		VSendResolved: in.SendResolved,
 		APIURL:        in.APIURL,
@@ -1073,6 +1095,7 @@ func (cb *configBuilder) convertSnsConfig(ctx context.Context, in monitoringv1al
 
 	return out, nil
 }
+
 func (cb *configBuilder) convertInhibitRule(in *monitoringv1alpha1.InhibitRule) *inhibitRule {
 	matchersV2Allowed := cb.amVersion.GTE(semver.MustParse("0.22.0"))
 	var sourceMatchers []string
@@ -1212,6 +1235,78 @@ func convertMuteTimeInterval(in *monitoringv1alpha1.MuteTimeInterval, crKey type
 	}
 
 	return muteTimeInterval, nil
+}
+
+func convertTimeInterval(in *monitoringv1alpha1.TimeIntervals, crKey types.NamespacedName) (*timeInterval, error) {
+	timeIntervals := &timeInterval{}
+
+	for _, timeInterval := range in.TimeIntervals {
+		ti := timeinterval.TimeInterval{}
+
+		for _, time := range timeInterval.Times {
+			parsedTime, err := time.Parse()
+			if err != nil {
+				return nil, err
+			}
+			ti.Times = append(ti.Times, timeinterval.TimeRange{
+				StartMinute: parsedTime.Start,
+				EndMinute:   parsedTime.End,
+			})
+		}
+
+		for _, wd := range timeInterval.Weekdays {
+			parsedWeekday, err := wd.Parse()
+			if err != nil {
+				return nil, err
+			}
+			ti.Weekdays = append(ti.Weekdays, timeinterval.WeekdayRange{
+				InclusiveRange: timeinterval.InclusiveRange{
+					Begin: parsedWeekday.Start,
+					End:   parsedWeekday.End,
+				},
+			})
+		}
+
+		for _, dom := range timeInterval.DaysOfMonth {
+			ti.DaysOfMonth = append(ti.DaysOfMonth, timeinterval.DayOfMonthRange{
+				InclusiveRange: timeinterval.InclusiveRange{
+					Begin: dom.Start,
+					End:   dom.End,
+				},
+			})
+		}
+
+		for _, month := range timeInterval.Months {
+			parsedMonth, err := month.Parse()
+			if err != nil {
+				return nil, err
+			}
+			ti.Months = append(ti.Months, timeinterval.MonthRange{
+				InclusiveRange: timeinterval.InclusiveRange{
+					Begin: parsedMonth.Start,
+					End:   parsedMonth.End,
+				},
+			})
+		}
+
+		for _, year := range timeInterval.Years {
+			parsedYear, err := year.Parse()
+			if err != nil {
+				return nil, err
+			}
+			ti.Years = append(ti.Years, timeinterval.YearRange{
+				InclusiveRange: timeinterval.InclusiveRange{
+					Begin: parsedYear.Start,
+					End:   parsedYear.End,
+				},
+			})
+		}
+
+		timeIntervals.Name = makeNamespacedString(in.Name, crKey)
+		timeIntervals.TimeIntervals = append(timeIntervals.TimeIntervals, ti)
+	}
+
+	return timeIntervals, nil
 }
 
 func makeNamespacedString(in string, crKey types.NamespacedName) string {
@@ -1543,7 +1638,6 @@ func (pdc *pagerdutyConfig) sanitize(amVersion semver.Version, logger log.Logger
 
 func (poc *pushoverConfig) sanitize(amVersion semver.Version, logger log.Logger) error {
 	return poc.HTTPConfig.sanitize(amVersion, logger)
-
 }
 
 func (sc *slackConfig) sanitize(amVersion semver.Version, logger log.Logger) error {
